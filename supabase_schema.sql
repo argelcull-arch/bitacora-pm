@@ -25,6 +25,36 @@ INSERT INTO configuracion (clave, valor) VALUES
 ON CONFLICT (clave) DO NOTHING;
 
 
+
+-- ─────────────────────────────────────────────────────────────
+-- TABLA: categorias  (agregada v3)
+-- Categorías editables por módulo desde Configuración.
+-- ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS categorias (
+    id         SERIAL PRIMARY KEY,
+    nombre     TEXT NOT NULL,
+    modulo     TEXT NOT NULL DEFAULT 'requerimientos',
+    activo     BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO categorias (nombre, modulo) VALUES
+    ('Eléctrico',       'requerimientos'),
+    ('Plomería',        'requerimientos'),
+    ('AC/Climatización','requerimientos'),
+    ('Equipos AV',      'requerimientos'),
+    ('Carpintería',     'requerimientos'),
+    ('Pintura',         'requerimientos'),
+    ('Equipos de Cocina','requerimientos'),
+    ('Piscina',         'requerimientos'),
+    ('General',         'requerimientos')
+ON CONFLICT DO NOTHING;
+
+GRANT ALL ON categorias TO anon;
+GRANT ALL ON categorias TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE categorias_id_seq TO anon;
+GRANT USAGE, SELECT ON SEQUENCE categorias_id_seq TO authenticated;
+
 -- ─────────────────────────────────────────────────────────────
 -- 1. TABLA: configuracion_hotel
 --    Parámetros globales del hotel (nombre, logo, etc.)

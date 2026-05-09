@@ -502,16 +502,95 @@ def _seccion_preventivo(sb):
 
 
 # ─────────────────────────────────────────────────────────────
+# SECCIÓN: CATEGORÍAS (v3)
+# ─────────────────────────────────────────────────────────────
+def _seccion_categorias(sb):
+    CATS_DEFAULT = [
+        "Eléctrico","Plomería","AC/Climatización","Equipos AV",
+        "Carpintería","Pintura","Equipos de Cocina","Piscina","General",
+    ]
+
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="card-title">🏷️ Categorías de Requerimientos</div>', unsafe_allow_html=True)
+    st.markdown('<span style="font-size:0.82rem;color:#64748b;">Estas categorías aparecen en el módulo de Requerimientos y en los reportes.</span>', unsafe_allow_html=True)
+
+    # Cargar categorías existentes
+    try:
+        resp = sb.table("categorias").select("*").eq("modulo","requerimientos").order("nombre").execute()
+        cats = resp.data or []
+    except Exception:
+        cats = []
+
+    if not cats:
+        st.info("ℹ️ No hay categorías en la base de datos. Se están usando las categorías por defecto.")
+        st.markdown("**Categorías por defecto activas:**")
+        for c in CATS_DEFAULT:
+            st.markdown(f"<span class='badge badge-azul'>{c}</span> ", unsafe_allow_html=True)
+        separador()
+
+    else:
+        for cat in cats:
+            cid = cat["id"]
+            act = cat.get("activo", True)
+            c_lbl, c_tog, c_del = st.columns([5, 1, 1])
+            c_lbl.markdown(f"""
+            <div style="padding:7px 0;font-size:0.87rem;">
+                {'🟢' if act else '🔴'}
+                <strong style="color:#f1f5f9;">{cat['nombre']}</strong>
+            </div>
+            """, unsafe_allow_html=True)
+
+            if c_tog.button("🚫" if act else "✅", key=f"cattog_{cid}",
+                            help="Desactivar" if act else "Activar"):
+                try:
+                    sb.table("categorias").update({"activo": not act}).eq("id", cid).execute()
+                    st.success("✅ Categoría actualizada.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ {e}")
+
+            if c_del.button("🗑️", key=f"catdel_{cid}", help="Eliminar definitivamente"):
+                try:
+                    sb.table("categorias").delete().eq("id", cid).execute()
+                    st.success("✅ Categoría eliminada.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ {e}")
+
+    separador()
+    st.markdown("**➕ Nueva Categoría**")
+    with st.form("form_nueva_cat", clear_on_submit=True):
+        nc_nom = st.text_input("Nombre de la categoría *",
+                               placeholder="ej: Fumigación, Cerrajería, Pintura...", key="nc_n")
+        crear_c = st.form_submit_button("➕ Agregar Categoría", use_container_width=True)
+    if crear_c:
+        if not nc_nom.strip():
+            st.warning("⚠️ El nombre es obligatorio.")
+        else:
+            try:
+                sb.table("categorias").insert({
+                    "nombre": nc_nom.strip(), "modulo": "requerimientos", "activo": True
+                }).execute()
+                st.success(f"✅ Categoría '{nc_nom.strip()}' creada. Ya aparece en Requerimientos.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ {e}")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+# ─────────────────────────────────────────────────────────────
 # RENDER PRINCIPAL
 # ─────────────────────────────────────────────────────────────
 def render(sb):
     requiere_admin()
     seccion_titulo("⚙️", "Configuración", "Administración del sistema · Solo administradores")
 
-    tab_hotel, tab_hab, tab_areas, tab_users, tab_prev = st.tabs([
+    tab_hotel, tab_hab, tab_areas, tab_cats, tab_users, tab_prev = st.tabs([
         "🏨 Hotel & Logo",
         "🛏️ Habitaciones",
         "📍 Áreas",
+        "🏷️ Categorías",
         "👥 Usuarios",
         "✅ Preventivo",
     ])
@@ -519,5 +598,6 @@ def render(sb):
     with tab_hotel:  _seccion_hotel(sb)
     with tab_hab:    _seccion_habitaciones(sb)
     with tab_areas:  _seccion_areas(sb)
+    with tab_cats:   _seccion_categorias(sb)
     with tab_users:  _seccion_usuarios(sb)
     with tab_prev:   _seccion_preventivo(sb)

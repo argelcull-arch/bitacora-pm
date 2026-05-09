@@ -136,4 +136,38 @@ usuario que las creó, con estado `Abierto` y prioridad `Media`.
 
 ---
 
-*NOVA v1.0 — Sistema de Gestión de Ingeniería Hotelera*
+---
+
+## Actualización v3 — Categorías dinámicas + Fixes
+
+### SQL adicional a ejecutar en Supabase:
+
+```sql
+CREATE TABLE IF NOT EXISTS categorias (
+    id         SERIAL PRIMARY KEY,
+    nombre     TEXT NOT NULL,
+    modulo     TEXT NOT NULL DEFAULT 'requerimientos',
+    activo     BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO categorias (nombre, modulo) VALUES
+    ('Eléctrico','requerimientos'),('Plomería','requerimientos'),
+    ('AC/Climatización','requerimientos'),('Equipos AV','requerimientos'),
+    ('Carpintería','requerimientos'),('Pintura','requerimientos'),
+    ('Equipos de Cocina','requerimientos'),('Piscina','requerimientos'),
+    ('General','requerimientos')
+ON CONFLICT DO NOTHING;
+
+GRANT ALL ON categorias TO anon, authenticated;
+GRANT USAGE, SELECT ON SEQUENCE categorias_id_seq TO anon, authenticated;
+```
+
+### Cambios v3:
+- **Requerimientos → Área**: campo de texto libre (sin dropdown)
+- **Requerimientos → Categoría**: cargada desde tabla `categorias` en Supabase
+- **Configuración → 🏷️ Categorías**: nuevo tab para agregar/desactivar/eliminar categorías
+- **Energía**: todos los valores son enteros (`step=1, format="%d"`)
+
+*NOVA v3*
+
