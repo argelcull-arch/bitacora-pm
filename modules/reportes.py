@@ -9,7 +9,7 @@ from datetime import date, timedelta, datetime
 from config import seccion_titulo, COLOR
 from database import (get_tareas, get_pendientes, get_inventario_items,
                       get_movimientos, get_preventivo_registros, get_preventivo_tareas,
-                      get_energia_lecturas, get_config_hotel)
+                      get_energia_lecturas, get_config)
 
 
 # ── EXCEL ──────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ def _generar_excel(sb, fecha_ini: date, fecha_fin: date) -> bytes:
     t_prev     = get_preventivo_tareas(sb)
     r_prev     = get_preventivo_registros(sb, fecha_desde=fecha_ini.isoformat(), fecha_hasta=fecha_fin.isoformat())
     energia    = get_energia_lecturas(sb)
-    cfg        = get_config_hotel(sb)
+    cfg        = get_config(sb)
 
     wb = openpyxl.Workbook()
 
@@ -156,7 +156,7 @@ def _generar_pdf(sb, fecha_ini: date, fecha_fin: date) -> bytes:
                                     Table, TableStyle, HRFlowable, PageBreak)
     from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
-    cfg        = get_config_hotel(sb)
+    cfg        = get_config(sb)
     nombre_hotel = cfg.get("nombre_hotel","Hotel NOVA")
     jefe       = cfg.get("jefe_ingenieria","Jefe de Ingeniería")
     filtros    = {"fecha_desde": fecha_ini.isoformat(), "fecha_hasta": (fecha_fin+timedelta(days=1)).isoformat()}
