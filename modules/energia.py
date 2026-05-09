@@ -1,6 +1,6 @@
 """
-NOVA — modules/energia.py
-Módulo 7: Registro y análisis de consumos de energía, agua y gas.
+NOVA — modules/energia.py  (v2)
+Fixes: Plotly dark theme, enteros en KPIs, número input correcto.
 """
 import streamlit as st
 import plotly.graph_objects as go
@@ -108,7 +108,7 @@ def render(sb):
         c1, c2, c3 = st.columns(3)
         with c1: kpi_card("📅", f"{consumo_prom_dia:.1f} {unidad}", "Prom. Diario", color)
         with c2: kpi_card("📆", f"{consumo_prom_sem:.1f} {unidad}", "Prom. Semanal", color)
-        with c3: kpi_card("🗓️", f"{consumo_prom_mes:.0f} {unidad}", "Prom. Mensual", color)
+        with c3: kpi_card("🗓️", f"{int(round(consumo_prom_mes))} {unidad}", "Prom. Mensual", color)
 
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -165,7 +165,7 @@ def render(sb):
         with cm:
             kpi_card("🗓️", f"{cons_act:.1f} {unidad}", f"Consumo {hoy.strftime('%B')}", color)
         with ca:
-            kpi_card("↩️", f"{cons_ant:.1f} {unidad}", f"Mes anterior", "#805ad5")
+            kpi_card("↩️", f"{cons_ant:.1f} {unidad}", "Mes anterior", "#8b5cf6")
         st.markdown(f"""
         <div style="text-align:center;font-size:1.1rem;font-weight:700;color:{var_color};padding:8px;">
             {var_signo} {abs(variacion):.1f}% vs mes anterior

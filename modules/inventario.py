@@ -1,11 +1,11 @@
 """
-NOVA — modules/inventario.py
-Módulo 4: Gestión de inventario con entradas/salidas y alertas.
+NOVA — modules/inventario.py  (v2)
+Módulo 4: Gestión de inventario. Fixes: enteros, step=1, CSS v2.
 """
 import streamlit as st
 from config import (seccion_titulo, stock_bar, badge_prioridad,
                     CATEGORIAS_INVENTARIO, separador)
-from database import (get_inventario_items, get_movimientos,
+from database import (get_inventario_items, get_movimientos,  # noqa
                       crear_item_inventario, actualizar_stock)
 from auth import es_admin
 
@@ -24,9 +24,9 @@ def render(sb):
         <div style="background:rgba(229,62,62,0.15);border:1px solid rgba(229,62,62,0.4);
                     border-radius:12px;padding:14px 18px;margin-bottom:16px;">
             <div style="font-weight:700;color:#fc8181;margin-bottom:6px;">
-                {ping_html} ⚠️ {len(criticos)} ítem(s) bajo el stock mínimo
+                {ping_html} ⚠️ {int(len(criticos))} ítem(s) bajo el stock mínimo
             </div>
-            {"".join(f'<span style="font-size:0.82rem;color:#e2e8f0;margin-right:14px;">• {i["nombre"]} ({i["stock_actual"]:.0f}/{i["stock_minimo"]:.0f} {i["unidad"]})</span>' for i in criticos)}
+            {" ".join(f'<span style="font-size:0.82rem;color:#f1f5f9;margin-right:14px;">• {i["nombre"]} ({int(i["stock_actual"])}/{int(i["stock_minimo"])} {i["unidad"]})</span>' for i in criticos)}
         </div>
         """, unsafe_allow_html=True)
 
@@ -65,13 +65,13 @@ def render(sb):
                         c_e, c_s = st.columns(2)
                         with c_e:
                             st.markdown('<div class="btn-success">', unsafe_allow_html=True)
-                            if st.button("＋ Entrada", key=f"ent_{iid}"):
+                            if st.button("＋ Entrada", key=f"ent_{iid}", use_container_width=True):
                                 st.session_state[f"mov_tipo_{iid}"] = "entrada"
                                 st.session_state[f"mov_open_{iid}"] = True
                             st.markdown('</div>', unsafe_allow_html=True)
                         with c_s:
                             st.markdown('<div class="btn-danger">', unsafe_allow_html=True)
-                            if st.button("－ Salida", key=f"sal_{iid}"):
+                            if st.button("－ Salida", key=f"sal_{iid}", use_container_width=True):
                                 st.session_state[f"mov_tipo_{iid}"] = "salida"
                                 st.session_state[f"mov_open_{iid}"] = True
                             st.markdown('</div>', unsafe_allow_html=True)
@@ -80,7 +80,7 @@ def render(sb):
                         if st.session_state.get(f"mov_open_{iid}"):
                             tipo_mov = st.session_state.get(f"mov_tipo_{iid}", "entrada")
                             with st.form(f"form_mov_{iid}"):
-                                cant  = st.number_input("Cantidad", min_value=0.01, value=1.0, step=1.0, key=f"cant_{iid}")
+                                cant  = st.number_input("Cantidad", min_value=1, value=1, step=1, format="%d", key=f"cant_{iid}")
                                 motiv = st.text_input("Motivo", key=f"motiv_{iid}")
                                 ok_m  = st.form_submit_button("✅ Confirmar")
                             if ok_m:
@@ -132,8 +132,8 @@ def render(sb):
             ubicacion = c3.text_input("Ubicación física", key="ni_ubic")
             unidad   = c4.text_input("Unidad de medida", value="unidad", key="ni_uni")
             c5, c6   = st.columns(2)
-            stock_ini = c5.number_input("Stock inicial", min_value=0.0, value=0.0, key="ni_stk")
-            stock_min = c6.number_input("Stock mínimo", min_value=0.0, value=5.0, key="ni_min")
+            stock_ini = c5.number_input("Stock inicial", min_value=0, value=0, step=1, format="%d", key="ni_stk")
+            stock_min = c6.number_input("Stock mínimo", min_value=0, value=5, step=1, format="%d", key="ni_min")
             desc     = st.text_area("Descripción (opcional)", height=60, key="ni_desc")
             submit   = st.form_submit_button("💾 Crear Ítem", use_container_width=True)
 

@@ -4,7 +4,7 @@ Entry point principal: configuración de página, sidebar y routing de módulos.
 Stack: Python + Streamlit + Supabase (PostgreSQL)
 """
 import streamlit as st
-from database import init_supabase, get_config_hotel
+from database import init_supabase, get_config
 from config import inject_css
 from auth import pantalla_login, cerrar_sesion, es_admin
 
@@ -38,7 +38,7 @@ with st.sidebar:
     # Logo / nombre del hotel
     cfg = {}
     try:
-        cfg = get_config_hotel(sb)
+        cfg = get_config(sb)
     except Exception:
         pass
 
@@ -107,15 +107,21 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Info del usuario
+    # Info del usuario con iniciales
     nombre_user = st.session_state.get("nombre","")
     rol_user    = st.session_state.get("rol","tecnico")
+    initials    = "".join(w[0].upper() for w in nombre_user.split()[:2])
     st.markdown(f"""
-    <div style="font-size:0.82rem;color:#94a3b8;padding:8px 4px;">
-        👤 <strong style="color:#e2e8f0;">{nombre_user}</strong><br>
-        <span style="text-transform:uppercase;font-size:0.72rem;letter-spacing:.5px;color:#4a90e2;">
-            {'🔑 Admin' if rol_user=='admin' else '🔧 Técnico'}
-        </span>
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 4px;">
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);
+                    display:flex;align-items:center;justify-content:center;font-weight:800;
+                    font-size:0.85rem;color:#fff;flex-shrink:0;">{initials}</div>
+        <div>
+            <div style="font-size:0.85rem;font-weight:600;color:#f1f5f9;">{nombre_user}</div>
+            <div style="font-size:0.7rem;color:#3b82f6;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">
+                {'🔑 Admin' if rol_user=='admin' else '🔧 Técnico'}
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 

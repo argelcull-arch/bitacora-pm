@@ -1,88 +1,84 @@
 """
-NOVA — modules/dashboard.py
-Módulo 1: Dashboard principal con KPIs, gráficos y tablas rápidas.
+NOVA — modules/dashboard.py  (v2)
+Fixes: Plotly dark theme, enteros en KPIs, colores v2.
 """
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta, date
+from collections import Counter
 import pandas as pd
 from config import kpi_card, seccion_titulo, badge_estado, badge_prioridad, COLOR, PLOTLY_LAYOUT, PLOTLY_COLORS
-from database import get_tareas, get_pendientes, get_inventario_items, get_activos, get_usuarios
+from database import get_tareas, get_pendientes, get_inventario_items, get_activos, get_usuarios, get_config
 
 
 def render(sb):
-    cfg = {}
-    try:
-        r = sb.table("configuracion_hotel").select("clave,valor").execute()
-        cfg = {x["clave"]: x["valor"] for x in (r.data or [])}
-    except Exception:
-        pass
-
+    cfg          = get_config(sb)
     nombre_hotel = cfg.get("nombre_hotel", "Hotel NOVA")
     logo_url     = cfg.get("logo_url", "")
     hoy_str      = datetime.now().strftime("%A %d de %B, %Y")
 
-    # ── Hero Banner ─────────────────────────────────────────────
-    logo_html = f'<img src="{logo_url}" style="max-height:48px;border-radius:8px;margin-right:14px;vertical-align:middle;">' if logo_url else '<span style="font-size:2.4rem;margin-right:10px;">⚡</span>'
+    # ── Hero Banner ──────────────────────────────────────────────
+    logo_html = (f'<img src="{logo_url}" style="max-height:44px;border-radius:8px;margin-right:12px;vertical-align:middle;">'
+                 if logo_url else '<span style="font-size:2rem;margin-right:10px;">⚡</span>')
     st.markdown(f"""
-    <div class="hero-banner" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-        <div>
-            <div style="display:flex;align-items:center;margin-bottom:4px;">
+    <div class="module-header" style="padding:22px 28px;margin-bottom:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <div style="display:flex;align-items:center;">
                 {logo_html}
-                <h2 style="margin:0;font-size:1.6rem;font-weight:800;color:#fff;">{nombre_hotel}</h2>
+                <div>
+                    <h2 style="margin:0;font-size:1.5rem;">{nombre_hotel}</h2>
+                    <p style="margin:0;">{hoy_str}</p>
+                </div>
             </div>
-            <p style="margin:0;color:rgba(255,255,255,0.55);font-size:0.85rem;">Sistema de Gestión de Ingeniería &nbsp;·&nbsp; {hoy_str}</p>
+            <span style="font-size:2rem;">🏨</span>
         </div>
-        <div style="font-size:2.2rem;">🏨</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Cargar datos ────────────────────────────────────────────
-    hoy   = date.today()
-    hoy_i = datetime.combine(hoy, datetime.min.time()).isoformat()
-    manana_i = datetime.combine(hoy + timedelta(days=1), datetime.min.time()).isoformat()
+    # ── Datos ────────────────────────────────────────────────────
+    hoy      = date.today()
+    hoy_iso  = datetime.combine(hoy, datetime.min.time()).isoformat()
+    mañana   = datetime.combine(hoy + timedelta(days=1), datetime.min.time()).isoformat()
 
-    todas_tareas    = get_tareas(sb)
+    todas_tareas     = get_tareas(sb)
     todos_pendientes = get_pendientes(sb)
-    items_inv       = get_inventario_items(sb)
-    activos         = get_activos(sb)
+    items_inv        = get_inventario_items(sb)
+    activos          = get_activos(sb)
 
-    # KPIs
-    tareas_hoy      = [t for t in todas_tareas if t.get("created_at","") >= hoy_i]
-    pend_criticos   = [p for p in todos_pendientes if p["estado"]=="Abierto" and p.get("prioridad")=="Alta"]
-    bajo_minimo     = [i for i in items_inv if i["stock_actual"] < i["stock_minimo"]]
-    mant_vencidos   = [a for a in activos
-                       if a.get("proximo_mantenimiento") and
-                          a["proximo_mantenimiento"] < hoy.isoformat() and
-                          a.get("estado") == "Operativo"]
+    tareas_hoy    = [t for t in todas_tareas if t.get("created_at","") >= hoy_iso]
+    pend_criticos = [p for p in todos_pendientes if p["estado"]=="Abierto" and p.get("prioridad")=="Alta"]
+    bajo_minimo   = [i for i in items_inv if i["stock_actual"] < i["stock_minimo"]]
+    mant_vencidos = [a for a in activos
+                     if a.get("proximo_mantenimiento") and
+                        a["proximo_mantenimiento"] < hoy.isoformat() and
+                        a.get("estado") == "Operativo"]
 
-    # ── Fila 1: KPIs ────────────────────────────────────────────
+    # ── KPI Row ──────────────────────────────────────────────────
     c1, c2, c3, c4 = st.columns(4)
-    with c1: kpi_card("📋", len(tareas_hoy),    "Requerimientos Hoy",    COLOR["primary"])
-    with c2: kpi_card("🚨", len(pend_criticos), "Pendientes Críticos",   COLOR["danger"])
-    with c3: kpi_card("📦", len(bajo_minimo),   "Stock Bajo Mínimo",     COLOR["warning"])
-    with c4: kpi_card("🔧", len(mant_vencidos), "Mantenimientos Vencidos",COLOR["info"])
+    with c1: kpi_card("📋", int(len(tareas_hoy)),    "Requerimientos Hoy",     COLOR["primary"])
+    with c2: kpi_card("🚨", int(len(pend_criticos)), "Pendientes Críticos",    COLOR["danger"])
+    with c3: kpi_card("📦", int(len(bajo_minimo)),   "Ítems Bajo Mínimo",      COLOR["warning"])
+    with c4: kpi_card("🔧", int(len(mant_vencidos)), "Mantenimientos Vencidos", COLOR["info"])
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── Fila 2: Gráficos ────────────────────────────────────────
+    # ── Gráficos ─────────────────────────────────────────────────
     c_izq, c_der = st.columns(2)
 
     with c_izq:
         st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<div class="card-title">📊 Top 10 Áreas con más Incidencias (30 días)</div>', unsafe_allow_html=True)
-        hace30 = (datetime.utcnow() - timedelta(days=30)).isoformat()
-        tareas_30 = [t for t in todas_tareas if t.get("created_at","") >= hace30]
+        st.markdown('<div class="card-title">📍 Top 10 Áreas — últimos 30 días</div>', unsafe_allow_html=True)
+        hace30     = (datetime.utcnow() - timedelta(days=30)).isoformat()
+        tareas_30  = [t for t in todas_tareas if t.get("created_at","") >= hace30]
         if tareas_30:
-            from collections import Counter
             conteo = Counter(t.get("lugar","Sin área") for t in tareas_30)
             top10  = dict(sorted(conteo.items(), key=lambda x: x[1], reverse=True)[:10])
-            df_bar = pd.DataFrame({"Área": list(top10.keys()), "Total": list(top10.values())})
-            fig = px.bar(df_bar, x="Total", y="Área", orientation="h",
-                         color="Total", color_continuous_scale=["#1a365d","#4a90e2"],
-                         template="plotly_dark")
-            fig.update_layout(**PLOTLY_LAYOUT, height=280, coloraxis_showscale=False)
+            df_b   = pd.DataFrame({"Área": list(top10.keys()), "Requerimientos": list(top10.values())})
+            fig    = px.bar(df_b, x="Requerimientos", y="Área", orientation="h",
+                            color="Requerimientos",
+                            color_continuous_scale=["#1e3a5f","#3b82f6"])
+            fig.update_layout(**PLOTLY_LAYOUT, height=290, coloraxis_showscale=False)
             fig.update_traces(marker_line_width=0)
             st.plotly_chart(fig, use_container_width=True)
         else:
@@ -91,97 +87,102 @@ def render(sb):
 
     with c_der:
         st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<div class="card-title">📈 Tendencia Semanal (8 semanas)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card-title">📈 Tendencia Semanal — 8 semanas</div>', unsafe_allow_html=True)
         semanas, conteos = [], []
         for w in range(7, -1, -1):
             ini = datetime.utcnow() - timedelta(weeks=w+1)
             fin = datetime.utcnow() - timedelta(weeks=w)
             cnt = sum(1 for t in todas_tareas
                       if ini.isoformat() <= t.get("created_at","") < fin.isoformat())
-            semanas.append(f"S-{w}" if w > 0 else "Esta sem")
-            conteos.append(cnt)
+            semanas.append("Esta sem" if w == 0 else f"S-{w}")
+            conteos.append(int(cnt))
         fig2 = go.Figure(go.Scatter(
             x=semanas, y=conteos, mode="lines+markers",
             line=dict(color=COLOR["primary"], width=2.5),
-            marker=dict(size=7, color=COLOR["primary"]),
-            fill="tozeroy", fillcolor="rgba(74,144,226,0.12)",
+            marker=dict(size=8, color=COLOR["primary"], line=dict(width=2, color="#fff")),
+            fill="tozeroy", fillcolor="rgba(59,130,246,0.08)",
         ))
-        fig2.update_layout(**PLOTLY_LAYOUT, height=280)
+        fig2.update_layout(**PLOTLY_LAYOUT, height=290)
         st.plotly_chart(fig2, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # ── Fila 3: Tablas rápidas ───────────────────────────────────
-    c_left, c_right = st.columns(2)
+    # ── Tablas rápidas ───────────────────────────────────────────
+    c_l, c_r = st.columns(2)
 
-    with c_left:
+    with c_l:
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown('<div class="card-title">🕐 Últimos 5 Requerimientos</div>', unsafe_allow_html=True)
-        ultimos5 = todas_tareas[:5]
-        if ultimos5:
-            for t in ultimos5:
-                hora = t.get("created_at","")[:16].replace("T"," ")
-                st.markdown(f"""
-                <div class="tabla-row" style="border-radius:8px;margin-bottom:6px;background:rgba(255,255,255,0.04);padding:10px 12px;">
-                    <span style="font-size:0.83rem;font-weight:600;color:#63b3ed;">{t.get('lugar','-')}</span>
-                    &nbsp;{badge_prioridad(t.get('prioridad','Media'))}&nbsp;{badge_estado(t.get('estado','Abierto'))}<br>
-                    <span style="font-size:0.8rem;color:#e2e8f0;">{t.get('detalle','')[:60]}{'…' if len(t.get('detalle',''))>60 else ''}</span><br>
-                    <span style="font-size:0.72rem;color:#94a3b8;">{hora} · {t.get('usuario','-')}</span>
+        for t in todas_tareas[:5]:
+            hora = t.get("created_at","")[:16].replace("T"," ")
+            st.markdown(f"""
+            <div class="tabla-row">
+                <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap;">
+                    <span style="font-weight:700;color:#93c5fd;font-size:0.85rem;">{t.get('lugar','-')}</span>
+                    {badge_prioridad(t.get('prioridad','Media'))} {badge_estado(t.get('estado','Abierto'))}
                 </div>
-                """, unsafe_allow_html=True)
-        else:
+                <div style="font-size:0.85rem;color:#f1f5f9;">{t.get('detalle','')[:65]}{'…' if len(t.get('detalle',''))>65 else ''}</div>
+                <div style="font-size:0.72rem;color:#64748b;margin-top:4px;">👤 {t.get('usuario','-')} · {hora}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        if not todas_tareas:
             st.info("Sin requerimientos registrados.")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    with c_right:
+    with c_r:
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown('<div class="card-title">🚨 Top 5 Pendientes Urgentes</div>', unsafe_allow_html=True)
-        abiertos = [p for p in todos_pendientes if p["estado"] != "Resuelto"]
-        prio_ord = {"Alta":0,"Media":1,"Baja":2}
-        abiertos_sorted = sorted(abiertos, key=lambda x: prio_ord.get(x.get("prioridad","Baja"),2))[:5]
-        if abiertos_sorted:
-            for p in abiertos_sorted:
-                crea  = p.get("created_at","")[:10]
-                try:
-                    dias = (date.today() - date.fromisoformat(crea)).days
-                except Exception:
-                    dias = 0
-                dias_color = "#e53e3e" if dias > 3 else "#94a3b8"
-                area_nombre = p.get("areas",{}).get("nombre","-") if isinstance(p.get("areas"),dict) else p.get("lugar","-")
-                st.markdown(f"""
-                <div class="tabla-row" style="border-radius:8px;margin-bottom:6px;background:rgba(255,255,255,0.04);padding:10px 12px;">
-                    <span style="font-size:0.83rem;font-weight:600;color:#fbd38d;">{area_nombre}</span>
-                    &nbsp;{badge_prioridad(p.get('prioridad','Media'))}<br>
-                    <span style="font-size:0.8rem;color:#e2e8f0;">{p.get('descripcion','')[:55]}{'…' if len(p.get('descripcion',''))>55 else ''}</span><br>
-                    <span style="font-size:0.72rem;color:{dias_color};font-weight:600;">⏱ {dias} días abierto · {p.get('asignado_a','-')}</span>
+        abiertos = sorted(
+            [p for p in todos_pendientes if p["estado"] != "Resuelto"],
+            key=lambda x: {"Alta":0,"Media":1,"Baja":2}.get(x.get("prioridad","Baja"), 2)
+        )[:5]
+        for p in abiertos:
+            crea_date = p.get("created_at","")[:10]
+            try:
+                dias = (date.today() - date.fromisoformat(crea_date)).days
+            except Exception:
+                dias = 0
+            dias_c  = "#ef4444" if dias > 3 else "#64748b"
+            area_n  = p.get("areas",{}).get("nombre","-") if isinstance(p.get("areas"),dict) else "-"
+            st.markdown(f"""
+            <div class="tabla-row">
+                <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+                    <span style="font-weight:700;color:#fde68a;font-size:0.85rem;">{area_n}</span>
+                    {badge_prioridad(p.get('prioridad','Media'))}
                 </div>
-                """, unsafe_allow_html=True)
-        else:
+                <div style="font-size:0.85rem;color:#f1f5f9;">{p.get('descripcion','')[:60]}{'…' if len(p.get('descripcion',''))>60 else ''}</div>
+                <div style="font-size:0.72rem;color:{dias_c};font-weight:600;margin-top:4px;">⏱ {int(dias)} días abierto · {p.get('asignado_a','-')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        if not abiertos:
             st.success("✅ Sin pendientes urgentes.")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # ── Fila 4: Productividad de técnicos hoy ───────────────────
+    # ── Productividad técnicos ───────────────────────────────────
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="card-title">👷 Productividad de Técnicos</div>', unsafe_allow_html=True)
-    usuarios = get_usuarios(sb)
-    tecnicos = [u for u in usuarios if u.get("rol") == "tecnico" and u.get("activo")]
+    tecnicos = [u for u in get_usuarios(sb) if u.get("rol")=="tecnico" and u.get("activo")]
     if tecnicos:
-        cols = st.columns(len(tecnicos) if len(tecnicos) <= 4 else 4)
+        cols = st.columns(min(len(tecnicos), 4))
         for i, tec in enumerate(tecnicos[:4]):
-            uname = tec["username"]
-            t_hoy_u  = sum(1 for t in tareas_hoy if t.get("usuario") == uname)
-            t_sem_u  = sum(1 for t in todas_tareas
-                           if t.get("usuario") == uname and
-                              t.get("created_at","") >= (datetime.utcnow()-timedelta(days=7)).isoformat())
+            uname   = tec["username"]
+            t_hoy_u = int(sum(1 for t in tareas_hoy if t.get("usuario")==uname))
+            t_sem_u = int(sum(1 for t in todas_tareas
+                              if t.get("usuario")==uname and
+                                 t.get("created_at","") >= (datetime.utcnow()-timedelta(days=7)).isoformat()))
+            initials = "".join(w[0].upper() for w in tec["nombre_completo"].split()[:2])
             with cols[i]:
                 st.markdown(f"""
-                <div style="background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:12px;padding:14px;text-align:center;">
-                    <div style="font-size:1.5rem;">👷</div>
-                    <div style="font-weight:700;font-size:0.9rem;color:#e2e8f0;">{tec['nombre_completo']}</div>
-                    <div style="margin-top:8px;display:flex;justify-content:center;gap:14px;">
-                        <div><div style="font-size:1.4rem;font-weight:800;color:#4a90e2;">{t_hoy_u}</div>
-                             <div style="font-size:0.68rem;color:#94a3b8;">HOY</div></div>
-                        <div><div style="font-size:1.4rem;font-weight:800;color:#38a169;">{t_sem_u}</div>
-                             <div style="font-size:0.68rem;color:#94a3b8;">SEMANA</div></div>
+                <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.15);
+                            border-radius:14px;padding:16px;text-align:center;">
+                    <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);
+                                display:flex;align-items:center;justify-content:center;margin:0 auto 8px;
+                                font-weight:800;font-size:0.95rem;color:#fff;">{initials}</div>
+                    <div style="font-weight:700;font-size:0.88rem;color:#f1f5f9;margin-bottom:10px;">{tec['nombre_completo']}</div>
+                    <div style="display:flex;justify-content:center;gap:16px;">
+                        <div><div style="font-size:1.6rem;font-weight:800;color:#3b82f6;">{t_hoy_u}</div>
+                             <div style="font-size:0.68rem;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">Hoy</div></div>
+                        <div><div style="font-size:1.6rem;font-weight:800;color:#10b981;">{t_sem_u}</div>
+                             <div style="font-size:0.68rem;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">Semana</div></div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)

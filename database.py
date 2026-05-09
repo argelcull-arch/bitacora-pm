@@ -1,17 +1,15 @@
 """
-NOVA — database.py
-Todas las funciones de acceso a Supabase, organizadas por módulo.
+NOVA — database.py  (v2)
+Funciones Supabase. Usa tabla 'configuracion' (clave/valor) para config global.
 """
 import streamlit as st
 from supabase import create_client, Client
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 
-# ── Conexión ───────────────────────────────────────────────────
 @st.cache_resource
 def init_supabase() -> Client:
-    """Inicializa cliente Supabase usando st.secrets o variables de entorno."""
     try:
         url = st.secrets["SUPABASE_URL"]
         key = st.secrets["SUPABASE_KEY"]
@@ -25,29 +23,32 @@ def init_supabase() -> Client:
 
 
 # ── Configuración del Hotel ────────────────────────────────────
-@st.cache_data(ttl=60)
-def get_config_hotel(_sb: Client) -> dict:
+# Usa tabla simple: configuracion (clave TEXT PK, valor TEXT)
+@st.cache_data(ttl=30)
+def get_config(_sb: Client) -> dict:
+    """Carga toda la configuración del hotel."""
     try:
-        resp = _sb.table("configuracion_hotel").select("clave,valor").execute()
+        resp = _sb.table("configuracion").select("clave,valor").execute()
         return {r["clave"]: r["valor"] for r in (resp.data or [])}
     except Exception:
         return {}
 
 
-def set_config_hotel(sb: Client, clave: str, valor: str) -> bool:
+def set_config(sb: Client, clave: str, valor: str) -> bool:
+    """Guarda un par clave/valor en configuracion."""
     try:
-        sb.table("configuracion_hotel").upsert(
-            {"clave": clave, "valor": valor, "updated_at": datetime.utcnow().isoformat()},
+        sb.table("configuracion").upsert(
+            {"clave": clave, "valor": valor},
             on_conflict="clave"
         ).execute()
-        get_config_hotel.clear()
+        get_config.clear()
         return True
     except Exception as e:
         st.error(f"❌ Error guardando configuración: {e}")
         return False
 
 
-# ── Áreas ─────────────────────────────────────────────────────
+# ── Áreas ──────────────────────────────────────────────────────
 @st.cache_data(ttl=30)
 def get_areas(_sb: Client, solo_activas: bool = True) -> list:
     try:
@@ -64,9 +65,11 @@ def get_area_nombres(_sb: Client) -> list[str]:
     return [a["nombre"] for a in get_areas(_sb)]
 
 
-def crear_area(sb: Client, nombre, tipo, piso, activo=True) -> bool:
+def crear_area(sb: Client, nombre: str, tipo: str, piso: str, activo: bool = True) -> bool:
     try:
-        sb.table("areas").insert({"nombre": nombre, "tipo": tipo, "piso": piso, "activo": activo}).execute()
+        sb.table("areas").insert({
+            "nombre": nombre, "tipo": tipo, "piso": piso, "activo": activo
+        }).execute()
         get_areas.clear()
         return True
     except Exception as e:
@@ -113,7 +116,7 @@ def crear_tarea(sb: Client, datos: dict) -> bool:
         sb.table("tareas").insert({
             **datos,
             "created_at": datetime.utcnow().isoformat(),
-            "estado": "Abierto",
+            "estado": datos.get("estado", "Abierto"),
         }).execute()
         get_tareas.clear()
         return True
@@ -191,7 +194,8 @@ def borrar_pendiente(sb: Client, id_p: int) -> bool:
 @st.cache_data(ttl=30)
 def get_inventario_items(_sb: Client) -> list:
     try:
-        return _sb.table("inventario_items").select("*").eq("activo", True).order("nombre").execute().data or []
+        return (_sb.table("inventario_items").select("*")
+                .eq("activo", True).order("nombre").execute().data or [])
     except Exception as e:
         st.error(f"❌ Error cargando inventario: {e}")
         return []
@@ -209,13 +213,12 @@ def crear_item_inventario(sb: Client, datos: dict) -> bool:
 
 def actualizar_stock(sb: Client, item_id: int, nuevo_stock: float,
                      tipo: str, cantidad: float, usuario: str, motivo: str) -> bool:
-    """Actualiza stock y registra movimiento."""
     try:
         sb.table("inventario_items").update({"stock_actual": nuevo_stock}).eq("id", item_id).execute()
         sb.table("inventario_movimientos").insert({
             "item_id": item_id, "tipo": tipo, "cantidad": cantidad,
             "usuario": usuario, "motivo": motivo,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.utcnow().isoformat(),
         }).execute()
         get_inventario_items.clear()
         return True
@@ -227,7 +230,9 @@ def actualizar_stock(sb: Client, item_id: int, nuevo_stock: float,
 @st.cache_data(ttl=30)
 def get_movimientos(_sb: Client, item_id: int = None) -> list:
     try:
-        q = _sb.table("inventario_movimientos").select("*, inventario_items(nombre)").order("created_at", desc=True).limit(200)
+        q = (_sb.table("inventario_movimientos")
+             .select("*, inventario_items(nombre)")
+             .order("created_at", desc=True).limit(200))
         if item_id:
             q = q.eq("item_id", item_id)
         return q.execute().data or []
@@ -240,7 +245,8 @@ def get_movimientos(_sb: Client, item_id: int = None) -> list:
 @st.cache_data(ttl=30)
 def get_activos(_sb: Client) -> list:
     try:
-        return _sb.table("activos").select("*, areas(nombre)").order("nombre").execute().data or []
+        return (_sb.table("activos").select("*, areas(nombre)")
+                .order("nombre").execute().data or [])
     except Exception as e:
         st.error(f"❌ Error cargando activos: {e}")
         return []
@@ -266,23 +272,27 @@ def actualizar_activo(sb: Client, id_a: int, datos: dict) -> bool:
         return False
 
 
+@st.cache_data(ttl=30)
+def get_historial_activo(_sb: Client, activo_id: int) -> list:
+    try:
+        return (_sb.table("activos_historial").select("*")
+                .eq("activo_id", activo_id).order("fecha", desc=True)
+                .execute().data or [])
+    except Exception as e:
+        st.error(f"❌ Error cargando historial: {e}")
+        return []
+
+
 def agregar_historial_activo(sb: Client, datos: dict) -> bool:
     try:
-        sb.table("activos_historial").insert({**datos, "created_at": datetime.utcnow().isoformat()}).execute()
+        sb.table("activos_historial").insert({
+            **datos, "created_at": datetime.utcnow().isoformat()
+        }).execute()
         get_historial_activo.clear()
         return True
     except Exception as e:
         st.error(f"❌ Error agregando historial: {e}")
         return False
-
-
-@st.cache_data(ttl=30)
-def get_historial_activo(_sb: Client, activo_id: int) -> list:
-    try:
-        return _sb.table("activos_historial").select("*").eq("activo_id", activo_id).order("fecha", desc=True).execute().data or []
-    except Exception as e:
-        st.error(f"❌ Error cargando historial: {e}")
-        return []
 
 
 # ── Preventivo ─────────────────────────────────────────────────
@@ -314,7 +324,9 @@ def get_preventivo_registros(_sb: Client, fecha_desde: str = None, fecha_hasta: 
 
 def registrar_preventivo(sb: Client, datos: dict) -> bool:
     try:
-        sb.table("preventivo_registros").insert({**datos, "created_at": datetime.utcnow().isoformat()}).execute()
+        sb.table("preventivo_registros").insert({
+            **datos, "created_at": datetime.utcnow().isoformat()
+        }).execute()
         get_preventivo_registros.clear()
         return True
     except Exception as e:
@@ -326,8 +338,7 @@ def registrar_preventivo(sb: Client, datos: dict) -> bool:
 @st.cache_data(ttl=30)
 def get_energia_lecturas(_sb: Client, tipo: str = None, dias: int = 90) -> list:
     try:
-        desde = (datetime.utcnow().date().__class__.today() -
-                 __import__("datetime").timedelta(days=dias)).isoformat()
+        desde = (date.today() - timedelta(days=dias)).isoformat()
         q = _sb.table("energia_lecturas").select("*").gte("fecha", desde).order("fecha")
         if tipo:
             q = q.eq("tipo", tipo)
@@ -339,7 +350,9 @@ def get_energia_lecturas(_sb: Client, tipo: str = None, dias: int = 90) -> list:
 
 def registrar_lectura_energia(sb: Client, datos: dict) -> bool:
     try:
-        sb.table("energia_lecturas").insert({**datos, "created_at": datetime.utcnow().isoformat()}).execute()
+        sb.table("energia_lecturas").insert({
+            **datos, "created_at": datetime.utcnow().isoformat()
+        }).execute()
         get_energia_lecturas.clear()
         return True
     except Exception as e:
@@ -351,7 +364,8 @@ def registrar_lectura_energia(sb: Client, datos: dict) -> bool:
 @st.cache_data(ttl=60)
 def get_usuarios(_sb: Client) -> list:
     try:
-        return _sb.table("usuarios_config").select("*").order("nombre_completo").execute().data or []
+        return (_sb.table("usuarios_config").select("*")
+                .order("nombre_completo").execute().data or [])
     except Exception as e:
         st.error(f"❌ Error cargando usuarios: {e}")
         return []
@@ -375,3 +389,17 @@ def actualizar_usuario(sb: Client, id_u: int, datos: dict) -> bool:
     except Exception as e:
         st.error(f"❌ Error actualizando usuario: {e}")
         return False
+
+
+# ── Helper: limpiar todos los caches ──────────────────────────
+def limpiar_cache():
+    get_config.clear()
+    get_areas.clear()
+    get_tareas.clear()
+    get_pendientes.clear()
+    get_inventario_items.clear()
+    get_activos.clear()
+    get_preventivo_tareas.clear()
+    get_preventivo_registros.clear()
+    get_energia_lecturas.clear()
+    get_usuarios.clear()

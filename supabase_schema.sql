@@ -1,8 +1,29 @@
 -- ============================================================
--- NOVA — Sistema de Gestión de Ingeniería Hotelera
+-- NOVA — Sistema de Gestión de Ingeniería Hotelera  v2
 -- Schema completo para Supabase (PostgreSQL)
 -- Ejecutar en: Supabase → SQL Editor → New Query
 -- ============================================================
+
+-- ─────────────────────────────────────────────────────────────
+-- 0. TABLA: configuracion  (nueva — v2)
+--    Par clave/valor para configuración del hotel.
+--    REEMPLAZA a configuracion_hotel.
+-- ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS configuracion (
+    clave  TEXT PRIMARY KEY,
+    valor  TEXT
+);
+
+INSERT INTO configuracion (clave, valor) VALUES
+    ('nombre_hotel',    'Hotel NOVA'),
+    ('slogan',          'Excelencia en Ingeniería'),
+    ('logo_url',        ''),
+    ('jefe_ingenieria', 'Jefe de Ingeniería'),
+    ('formato_hab',     'simple'),
+    ('num_habitaciones','50'),
+    ('piso_inicio',     '1')
+ON CONFLICT (clave) DO NOTHING;
+
 
 -- ─────────────────────────────────────────────────────────────
 -- 1. TABLA: configuracion_hotel
