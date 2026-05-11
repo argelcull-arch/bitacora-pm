@@ -56,7 +56,8 @@ with st.sidebar:
     else:
         st.markdown(f"""
         <div class="nova-logo">
-            <h1>⚡ NOVA</h1>
+            <div class="nova-logo-badge">⚡</div>
+            <h1>NOVA</h1>
             <p>{nombre_hotel}</p>
         </div>
         """, unsafe_allow_html=True)
@@ -129,6 +130,7 @@ with st.sidebar:
     if st.button("🚪 Cerrar Sesión", key="btn_logout", use_container_width=True):
         cerrar_sesion()
     st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-version">NOVA v3.0 · 2025</div>', unsafe_allow_html=True)
 
 # ── Router de módulos ───────────────────────────────────────────────────────────
 modulo = st.session_state.get("modulo_activo", "dashboard")

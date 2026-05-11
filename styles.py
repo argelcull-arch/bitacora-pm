@@ -1,6 +1,7 @@
 """
-NOVA — styles.py
-CSS premium dividido en secciones. Importado por config.py.
+NOVA — styles.py  (v3)
+CSS premium dividido en secciones lógicas. Importado por config.py.
+NO modificar config.py para cambios visuales — editar aquí.
 """
 
 # ── 1. BASE: fuente, fondo, layout, scrollbar, hide elements ───
@@ -25,7 +26,7 @@ html, body, [class*="css"], .stApp {
 hr { border: none !important; border-top: 1px solid rgba(255,255,255,0.08) !important; margin: 16px 0 !important; }
 """
 
-# ── 2. SIDEBAR: fondo, logo, nav buttons, scrollbar fino ──────
+# ── 2. SIDEBAR: fondo, logo animado, nav buttons, scrollbar fino ──
 _CSS_SIDEBAR = """
 [data-testid="stSidebar"] {
     background: #0d1117 !important;
@@ -33,52 +34,84 @@ _CSS_SIDEBAR = """
 }
 [data-testid="stSidebar"] > div:first-child { padding-top: 0 !important; }
 [data-testid="stSidebar"] ::-webkit-scrollbar { width: 3px; }
-[data-testid="stSidebar"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+[data-testid="stSidebar"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 99px; }
 
+@keyframes sidebarGrad {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
 .nova-logo {
-    background: linear-gradient(135deg, #1a2035 0%, #0f1729 100%);
-    border-bottom: 1px solid rgba(59,130,246,0.18);
-    padding: 22px 18px 18px; text-align: center; margin-bottom: 6px;
+    background: linear-gradient(135deg, #0f1729 0%, #1a2035 100%);
+    border-bottom: 1px solid rgba(59,130,246,0.15);
+    padding: 20px 16px 16px; text-align: center; margin-bottom: 4px;
+}
+.nova-logo-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 52px; height: 52px; border-radius: 16px; margin-bottom: 10px;
+    background: linear-gradient(135deg, #1d4ed8, #3b82f6, #8b5cf6, #1d4ed8);
+    background-size: 300% 300%;
+    animation: sidebarGrad 5s ease infinite;
+    font-size: 1.5rem; box-shadow: 0 4px 16px rgba(59,130,246,0.35);
 }
 .nova-logo h1 {
-    font-size: 1.55rem !important; font-weight: 800 !important;
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6) !important;
+    font-size: 1.45rem !important; font-weight: 800 !important;
+    background: linear-gradient(135deg, #ffffff, #93c5fd) !important;
     -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important;
-    margin: 0 0 4px 0 !important;
+    margin: 0 0 3px 0 !important; letter-spacing: -0.5px !important;
 }
-.nova-logo p { font-size: 0.72rem !important; color: #64748b !important; margin: 0 !important; }
-.nova-logo-img { max-height: 52px; max-width: 150px; object-fit: contain; border-radius: 8px; margin-bottom: 8px; }
+.nova-logo p { font-size: 0.7rem !important; color: #475569 !important; margin: 0 !important; letter-spacing: 0.3px !important; }
+.nova-logo-img { max-height: 52px; max-width: 140px; object-fit: contain; border-radius: 10px; margin-bottom: 8px; }
 
+/* NAV BUTTONS */
 [data-testid="stSidebar"] .stButton > button {
-    background: transparent !important; color: #94a3b8 !important;
+    background: transparent !important; color: #64748b !important;
     border: none !important; border-radius: 10px !important;
-    font-size: 0.88rem !important; font-weight: 500 !important;
-    padding: 9px 14px !important; width: 100% !important;
+    font-size: 0.87rem !important; font-weight: 500 !important;
+    padding: 9px 12px !important; width: 100% !important;
     text-align: left !important; justify-content: flex-start !important;
-    box-shadow: none !important; transition: all 0.18s ease !important; margin-bottom: 2px !important;
+    box-shadow: none !important; transition: all 0.18s ease !important;
+    margin-bottom: 1px !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover {
     background: rgba(59,130,246,0.1) !important; color: #93c5fd !important;
-    transform: none !important; box-shadow: none !important;
+    transform: translateX(3px) !important; box-shadow: none !important;
 }
 
 .nav-active {
     background: rgba(59,130,246,0.15) !important;
-    border: 1px solid rgba(59,130,246,0.3) !important;
+    border: 1px solid rgba(59,130,246,0.28) !important;
     border-left: 3px solid #3b82f6 !important;
-    border-radius: 10px; padding: 9px 14px; margin-bottom: 4px;
-    font-size: 0.9rem; font-weight: 600; color: #93c5fd;
+    border-radius: 10px; padding: 9px 12px; margin-bottom: 2px;
+    font-size: 0.88rem; font-weight: 600; color: #93c5fd;
+    transition: all 0.15s ease;
+}
+
+/* SIDEBAR VERSION FOOTER */
+.sidebar-version {
+    font-size: 0.65rem; color: #1e293b; text-align: center;
+    padding: 8px; letter-spacing: 0.5px; text-transform: uppercase;
 }
 """
 
 # ── 3. CARDS, KPI, MODULE HEADER ─────────────────────────────
 _CSS_CARDS = """
-.card {
-    background: #1a2035; border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 16px; padding: 22px 24px; margin-bottom: 16px;
-    transition: border-color 0.2s ease;
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
-.card:hover { border-color: rgba(59,130,246,0.22); }
+.card {
+    background: #1a2035; border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 18px; padding: 22px 24px; margin-bottom: 16px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    animation: cardIn 0.35s ease both;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}
+.card:hover {
+    border-color: rgba(59,130,246,0.25);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+    transform: translateY(-1px);
+}
 .card-title { font-size: 1rem; font-weight: 700; color: #f1f5f9; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 
 .kpi-card {
@@ -240,8 +273,15 @@ _CSS_DATA = """
 [data-testid="stDataFrame"] td { color: #f1f5f9 !important; font-size: 0.87rem !important; border-color: rgba(255,255,255,0.05) !important; }
 """
 
-# ── 7. COMPONENTES: tabs, expander, alerts, kanban, ping, mobile
+# ── 7. COMPONENTES: tabs, expander, alerts, kanban, ping, separadores, mobile
 _CSS_COMPONENTS = """
+/* Separador degradado */
+.sep-grad {
+    height: 1px; margin: 20px 0;
+    background: linear-gradient(90deg, transparent, rgba(59,130,246,0.3), transparent);
+    border: none;
+}
+
 .stTabs [data-baseweb="tab-list"] { background: #111827; border-radius: 10px; padding: 4px; gap: 2px; border: 1px solid rgba(255,255,255,0.06); }
 .stTabs [data-baseweb="tab"] { background: transparent; border-radius: 8px; color: #64748b; font-weight: 500; font-size: 0.88rem; transition: all 0.15s ease; }
 .stTabs [aria-selected="true"] { background: #1a2035 !important; color: #f1f5f9 !important; }
